@@ -29,11 +29,16 @@ const bookCollection = db.collection('book')
 
 
 // http://localhost:8000/books
-app.post('/books', async(req, res) => {
+app.post('/books', async (req, res) => {
     const data = req.body
 
     const result = await bookCollection.insertOne(data)
     console.log(result);
+    res.send(result)
+})
+
+app.get('/books', async (req, res) => {
+    const result = await bookCollection.find().toArray()
     res.send(result)
 })
 
