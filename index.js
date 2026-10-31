@@ -56,6 +56,13 @@ app.post('/borrows', async (req, res) => {
     res.send(result)
 })
 
+// http://localhost:8000/borrows/:email
+app.get('/borrows/:email', async (req, res) => {
+    const { email } = req.params
+    const result = await borrowedCollection.find({email: email}).toArray()
+    res.send(result)
+})
+
 
 // http://localhost:8000
 
