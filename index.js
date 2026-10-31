@@ -59,7 +59,14 @@ app.post('/borrows', async (req, res) => {
 // http://localhost:8000/borrows/:email
 app.get('/borrows/:email', async (req, res) => {
     const { email } = req.params
-    const result = await borrowedCollection.find({email: email}).toArray()
+    const result = await borrowedCollection.find({ email: email }).toArray()
+    res.send(result)
+})
+
+//http://localhost:8000/borrows/:borrowId
+app.delete('/borrows/:borrowId', async (req, res) => {
+    const { borrowId } = req.params
+    const result = await borrowedCollection.deleteOne({ _id: borrowId })
     res.send(result)
 })
 
