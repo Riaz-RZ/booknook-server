@@ -25,6 +25,7 @@ const mongoClient = await connectToMongoDB();
 
 const db = mongoClient.db('booknook')
 const bookCollection = db.collection('book')
+const borrowedCollection = db.collection('borrowed')
 
 
 
@@ -43,8 +44,15 @@ app.get('/books', async (req, res) => {
 
 // http://localhost:8000/book/:id
 app.get('/book/:id', async (req, res) => {
-    const {id} = req.params
-    const result = await bookCollection.findOne({_id: new ObjectId(id)})
+    const { id } = req.params
+    const result = await bookCollection.findOne({ _id: new ObjectId(id) })
+    res.send(result)
+})
+
+// http://localhost:8000/borrows
+app.post('/borrows', async (req, res) => {
+    const data = req.body
+    const result = await borrowedCollection.insertOne(data)
     res.send(result)
 })
 
