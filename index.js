@@ -2,6 +2,7 @@ import express from 'express'
 import { MongoClient, ObjectId } from 'mongodb';
 import 'dotenv/config'
 import cors from 'cors'
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 const app = express();
 const PORT = 8000
@@ -28,12 +29,35 @@ const bookCollection = db.collection('book')
 const borrowedCollection = db.collection('borrowed')
 
 
+const verifyToken = async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    console.log(authHeader);
+
+    if (!authHeader) {
+        return res.status(401).send({ msg: 'Unauthorized' })
+    }
+
+    const token = authHeader.split(' ')[1]
+
+    if (!token) {
+        return res.status(401).send({ msg: 'Unauthorized' })
+    }
+
+    const JWKS = createRemoteJWKSet(new URL('http://localhost:3000/api/auth/jwks'))
+    try {
+        const { payload } = await jwtVerify(token, JWKS)
+        next();
+    } catch (error) {
+        return res.status(500).send({ msg: 'server error' })
+    }
+}
+
+
 
 // http://localhost:8000/books
-app.post('/books', async (req, res) => {
+app.post('/books', verifyToken, async (req, res) => {
     const data = req.body
     const result = await bookCollection.insertOne(data)
-    console.log(result);
     res.send(result)
 })
 
@@ -43,28 +67,28 @@ app.get('/books', async (req, res) => {
 })
 
 // http://localhost:8000/book/:id
-app.get('/book/:id', async (req, res) => {
+app.get('/book/:id', verifyToken, async (req, res) => {
     const { id } = req.params
     const result = await bookCollection.findOne({ _id: new ObjectId(id) })
     res.send(result)
 })
 
 // http://localhost:8000/borrows
-app.post('/borrows', async (req, res) => {
+app.post('/borrows',verifyToken, async (req, res) => {
     const data = req.body
     const result = await borrowedCollection.insertOne(data)
     res.send(result)
 })
 
 // http://localhost:8000/borrows/:email
-app.get('/borrows/:email', async (req, res) => {
+app.get('/borrows/:email', verifyToken, async (req, res) => {
     const { email } = req.params
     const result = await borrowedCollection.find({ email: email }).toArray()
     res.send(result)
 })
 
 //http://localhost:8000/borrows/:borrowId
-app.delete('/borrows/:borrowId', async (req, res) => {
+app.delete('/borrows/:borrowId', verifyToken, async (req, res) => {
     const { borrowId } = req.params
     const result = await borrowedCollection.deleteOne({ _id: borrowId })
     res.send(result)
