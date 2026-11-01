@@ -43,7 +43,7 @@ const verifyToken = async (req, res, next) => {
         return res.status(401).send({ msg: 'Unauthorized' })
     }
 
-    const JWKS = createRemoteJWKSet(new URL('http://localhost:3000/api/auth/jwks'))
+    const JWKS = createRemoteJWKSet(new URL(`${process.env.CLIENT_URL}/api/auth/jwks`))
     try {
         const { payload } = await jwtVerify(token, JWKS)
         next();
@@ -74,7 +74,7 @@ app.get('/book/:id', verifyToken, async (req, res) => {
 })
 
 // http://localhost:8000/borrows
-app.post('/borrows',verifyToken, async (req, res) => {
+app.post('/borrows', verifyToken, async (req, res) => {
     const data = req.body
     const result = await borrowedCollection.insertOne(data)
     res.send(result)
@@ -104,3 +104,5 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
     console.log(`app is running to the port ${PORT}`);
 })
+
+export default app
