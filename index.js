@@ -186,6 +186,72 @@ app.post('/books', verifyToken, async (req, res) => {
     }
 });
 
+// Delete Added Book
+
+app.delete("/books/:id", verifyToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userEmail = req.user?.email?.toLowerCase();
+
+        if (!ObjectId.isValid(id)) {
+            return res.status(400).send({
+                success: false,
+                message: "Invalid book ID",
+            });
+        }
+
+        if (!userEmail) {
+            return res.status(401).send({
+                success: false,
+                message: "User email not found",
+            });
+        }
+
+        // Find the book and verify ownership
+        const book = await bookCollection.findOne({
+            _id: new ObjectId(id),
+            userEmail: { $regex: `^${userEmail}$`, $options: "i" },
+        });
+
+        if (!book) {
+            return res.status(404).send({
+                success: false,
+                message: "Book not found or you are not authorized to delete it",
+            });
+        }
+
+        // Check whether this book has active borrowers
+        const activeBorrow = await borrowedCollection.findOne({
+            bookId: id,
+        });
+
+        if (activeBorrow) {
+            return res.status(400).send({
+                success: false,
+                message: "This book cannot be deleted while it has active borrowers",
+            });
+        }
+
+        await bookCollection.deleteOne({
+            _id: new ObjectId(id),
+        });
+
+        res.send({
+            success: true,
+            message: "Book deleted successfully",
+        });
+
+    } catch (error) {
+        console.error("Delete book error:", error);
+
+        res.status(500).send({
+            success: false,
+            message: "Failed to delete book",
+        });
+    }
+});
+
+
 
 // Get All Books
 
@@ -495,8 +561,8 @@ app.get('/', (req, res) => {
 });
 
 
-    app.listen(PORT, () => {
-        console.log(`App is running on port ${PORT}`);
-    });
+app.listen(PORT, () => {
+    console.log(`App is running on port ${PORT}`);
+});
 
 export default app;
