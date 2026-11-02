@@ -3,12 +3,32 @@ import { MongoClient, ObjectId } from 'mongodb';
 import 'dotenv/config'
 import cors from 'cors'
 import { createRemoteJWKSet, jwtVerify } from 'jose';
+import multer from 'multer';
 
 const app = express();
 const PORT = 8000
 
 app.use(cors())
-app.use(express.json())
+app.use(express.json({ limit: '10mb' }))
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 5 * 1024 * 1024, // Maximum 5 MB
+    },
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = [
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+        ];
+
+        if (allowedTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only JPG, PNG and WEBP images are allowed'));
+        }
+    },
+});
 
 
 const client = new MongoClient(process.env.MONGODB_URI);
@@ -51,6 +71,61 @@ const verifyToken = async (req, res, next) => {
         return res.status(500).send({ msg: 'server error' })
     }
 }
+
+// Upload book image to ImgBB
+app.post('/upload-image', verifyToken, upload.single('image'), async (req, res) => {
+    try {
+        // Check whether an image was selected
+        if (!req.file) {
+            return res.status(400).send({
+                message: 'Please select an image',
+            });
+        }
+
+        // Prepare image data for ImgBB
+        const formData = new FormData();
+
+        formData.append(
+            'image',
+            req.file.buffer.toString('base64')
+        );
+
+        // Upload image to ImgBB
+        const response = await fetch(
+            `https://api.imgbb.com/1/upload?key=${process.env.IMGBB_API_KEY}`,
+            {
+                method: 'POST',
+                body: formData,
+            }
+        );
+
+        const result = await response.json();
+
+        // Check ImgBB response
+        if (!response.ok || !result.success) {
+            return res.status(400).send({
+                message: 'Image upload failed',
+                error: result.error?.message,
+            });
+        }
+
+        // Send image URL to frontend
+        res.status(200).send({
+            message: 'Image uploaded successfully',
+            imageUrl: result.data.display_url,
+        });
+
+    } catch (error) {
+        console.error('ImgBB upload error:', error);
+
+        res.status(500).send({
+            message: 'Failed to upload image',
+        });
+    }
+});
+
+
+
 
 
 
